@@ -2,7 +2,7 @@ import { AppLoading } from 'expo';
 import { Asset } from 'expo-asset';
 import * as Font from 'expo-font';
 import React from 'react';
-import { Platform, StatusBar, StyleSheet, View, Text } from 'react-native';
+import { Platform, StatusBar, StyleSheet, View, Text, AsyncStorage } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { getJSON } from './utils';
@@ -14,6 +14,13 @@ export default class App extends React.Component {
   state = {
     isReady: false,
     isLoggedIn: undefined
+  }
+
+  constructor(props) {
+    super(props);
+    this.loginCompleted = this.loginCompleted.bind(this);
+    this.logout = this.logout.bind(this);
+    global.logout = this.logout;
   }
 
   render() {
@@ -35,9 +42,21 @@ export default class App extends React.Component {
     }
   }
 
+  loginCompleted() {
+    this.setState({
+      isLoggedIn: true
+    });
+  }
+
+  async logout() {
+    await AsyncStorage.removeItem('token');
+    this.setState({
+      isLoggedIn: false
+    });
+  }
+
   componentDidMount() {
     getJSON('/3.0/authenticated/me', true).then(res => {
-      console.log(res);
       this.setState({
         isLoggedIn: res.success
       });
@@ -58,7 +77,7 @@ export default class App extends React.Component {
     }
 
     if (isLoggedIn === false) {
-      return <LoginScreen />;
+      return <LoginScreen onLogin={this.loginCompleted} />;
     } else {
       return <AppNavigator />;
     }

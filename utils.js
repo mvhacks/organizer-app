@@ -1,6 +1,7 @@
 import { AsyncStorage } from 'react-native';
 
 export const serverHost = 'https://api.mvhacks.io';
+export const accentColor = '#3498DB';
 
 export async function postJSON(url, json, authenticated = false) {
     if (authenticated) {

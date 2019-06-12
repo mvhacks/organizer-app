@@ -39,6 +39,8 @@ export default class LoginScreen extends React.Component {
         
         if (response.success) {
           await AsyncStorage.setItem('token', response.data.token);
+          this.props.onLogin();
+          return;
         } else {
           error = 'There was an error with MVHacks servers — received bad result (' + response.error + ')';
         }
