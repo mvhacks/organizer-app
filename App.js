@@ -1,32 +1,60 @@
 import { AppLoading } from 'expo';
 import { Asset } from 'expo-asset';
 import * as Font from 'expo-font';
-import React, { useState } from 'react';
-import { Platform, StatusBar, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { Platform, StatusBar, StyleSheet, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+import { getJSON } from './utils';
 
 import AppNavigator from './navigation/AppNavigator';
 import LoginScreen from './screens/LoginScreen';
 
-export default function App(props) {
-  const [isLoadingComplete, setLoadingComplete] = useState(false);
+export default class App extends React.Component {
+  state = {
+    isReady: false,
+    isLoggedIn: undefined
+  }
 
-  if (!isLoadingComplete && !props.skipLoadingScreen) {
-    return (
-      <AppLoading
-        startAsync={loadResourcesAsync}
-        onError={handleLoadingError}
-        onFinish={() => handleFinishLoading(setLoadingComplete)}
-      />
-    );
-  } else {
-    return (
-      <View style={styles.container}>
-        {Platform.OS === 'ios' && <StatusBar barStyle="default" />}
-        {/* <AppNavigator /> */}
-        <LoginScreen></LoginScreen>
-      </View>
-    );
+  render() {
+    if (!this.state.isReady) {
+      return (
+        <AppLoading
+          startAsync={loadResourcesAsync}
+          onError={handleLoadingError}
+          onFinish={() => this.setState({ isReady: true })}
+        />
+      );
+    } else {
+      return (
+        <View style={styles.container}>
+          {Platform.OS === 'ios' && <StatusBar barStyle="default" />}
+          {this.getMainScreen()}
+        </View>
+      );
+    }
+  }
+
+  componentDidMount() {
+    getJSON('/3.0/authenticated/me').then(res => {
+      this.setState({
+        isLoggedIn: res.success
+      });
+    });
+  }
+  
+  getMainScreen() {
+    let { isLoggedIn } = this.state;
+
+    if (isLoggedIn === undefined) {
+      return <Text>Loading</Text>;
+    }
+
+    if (isLoggedIn === false) {
+      return <LoginScreen />;
+    } else {
+      return <AppNavigator />;
+    }
   }
 }
 
@@ -50,10 +78,6 @@ function handleLoadingError(error) {
   // In this case, you might want to report the error to your error reporting
   // service, for example Sentry
   console.warn(error);
-}
-
-function handleFinishLoading(setLoadingComplete) {
-  setLoadingComplete(true);
 }
 
 const styles = StyleSheet.create({
