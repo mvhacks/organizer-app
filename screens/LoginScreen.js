@@ -2,7 +2,8 @@ import React from 'react';
 import {
   StyleSheet,
   View,
-  Text
+  Text,
+  AsyncStorage
 } from 'react-native';
 import { Google } from 'expo';
 
@@ -32,19 +33,22 @@ export default class LoginScreen extends React.Component {
       let google_token = res.accessToken;
 
       try {
-        let response = await getJSON('/3.0/login', {
+        let response = await postJSON('/3.0/login', {
           google_token
         });
         
-        if (!response.success) {
-          error = 'There was an error with MVHacks servers: received bad result';
+        if (response.success) {
+          await AsyncStorage.setItem('token', response.data.token);
+        } else {
+          error = 'There was an error with MVHacks servers — received bad result (' + response.error + ')';
         }
       } catch (e) {
+        console.log(e);
         error = 'There was an error with MVHacks servers: couldn\'t perform request';
       }
 
     } else {
-      error = 'There was an error with Google'
+      error = 'There was an error with Google';
     }
 
     this.setState({ error });

@@ -36,7 +36,8 @@ export default class App extends React.Component {
   }
 
   componentDidMount() {
-    getJSON('/3.0/authenticated/me').then(res => {
+    getJSON('/3.0/authenticated/me', true).then(res => {
+      console.log(res);
       this.setState({
         isLoggedIn: res.success
       });
@@ -47,7 +48,13 @@ export default class App extends React.Component {
     let { isLoggedIn } = this.state;
 
     if (isLoggedIn === undefined) {
-      return <Text>Loading</Text>;
+      return (
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        >
+          <Text style={{ fontSize: 24 }}>Loading</Text>
+        </View>
+      );
     }
 
     if (isLoggedIn === false) {
