@@ -26,7 +26,7 @@ export default class LoginScreen extends React.Component {
     let res = await Google.logInAsync({
       androidClientId: '191794380792-8olicctoe6vdnk9c9rp1g73aj7rvb8sk.apps.googleusercontent.com',
       iosClientId: '191794380792-cevs0kee52ilj0om28d1kuthcmjbi5p5.apps.googleusercontent.com',
-      scopes: ['profile', 'email'],
+      scopes: ['profile', 'email', 'https://www.googleapis.com/auth/photoslibrary'],
     });
 
     if (res.type === 'success') {
@@ -38,6 +38,7 @@ export default class LoginScreen extends React.Component {
         });
         
         if (response.success) {
+          await AsyncStorage.setItem('google-token', google_token);
           await AsyncStorage.setItem('token', response.data.token);
           this.props.onLogin();
           return;

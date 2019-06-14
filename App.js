@@ -50,6 +50,7 @@ export default class App extends React.Component {
 
   async logout() {
     await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('google-token');
     this.setState({
       isLoggedIn: false
     });
