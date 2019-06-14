@@ -7,7 +7,7 @@ import {
 
 import TabBarIcon from '../components/TabBarIcon';
 import HomeScreen from '../screens/HomeScreen';
-import LinksScreen from '../screens/LinksScreen';
+import QRScreen from '../screens/QRScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
 const HomeStack = createStackNavigator({
@@ -28,12 +28,12 @@ HomeStack.navigationOptions = {
   ),
 };
 
-const LinksStack = createStackNavigator({
-  Links: LinksScreen,
+const QRCodeScreen = createStackNavigator({
+  Links: QRScreen,
 });
 
-LinksStack.navigationOptions = {
-  tabBarLabel: 'Links',
+QRCodeScreen.navigationOptions = {
+  tabBarLabel: 'QR Code',
   tabBarIcon: ({ focused }) => (
     <TabBarIcon
       focused={focused}
@@ -58,6 +58,6 @@ SettingsStack.navigationOptions = {
 
 export default createBottomTabNavigator({
   HomeStack,
-  LinksStack,
+  QRCodeScreen,
   SettingsStack,
 });
