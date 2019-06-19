@@ -15,7 +15,7 @@ export async function postJSON(url, json, authenticated = false) {
         method: 'POST',
         headers: {
             'Content-type': 'application/json',
-            'Authentication': 'Bearer ' + authenticated
+            'Authorization': 'Bearer ' + authenticated
         },
         body: JSON.stringify(json)
     }).then(res => res.json());
@@ -31,7 +31,7 @@ export async function getJSON(url, authenticated = false) {
     }
     return fetch(url, {
         headers: {
-            'Authentication': 'Bearer ' + authenticated
+            'Authorization': 'Bearer ' + authenticated
         }
     }).then(res => res.json());
 }
