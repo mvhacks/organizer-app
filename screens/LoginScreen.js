@@ -39,7 +39,7 @@ export default class LoginScreen extends React.Component {
         
         if (response.success) {
           await AsyncStorage.setItem('google-token', google_token);
-          await AsyncStorage.setItem('token', response.data.token);
+          await AsyncStorage.setItem('mvhacks-token', response.data.token);
           this.props.onLogin();
           return;
         } else {
