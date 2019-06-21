@@ -1,198 +1,114 @@
-import * as WebBrowser from 'expo-web-browser';
-import React from 'react';
-import {
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, { Component } from 'react';
+import { View, Text, FlatList, ActivityIndicator } from 'react-native';
+import { ListItem, SearchBar } from 'react-native-elements';
+import { postJSON, getJSON } from '../utils';
 
-import { MonoText } from '../components/StyledText';
+class HomeScreen extends Component {
 
-export default function HomeScreen() {
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}>
-        <View style={styles.welcomeContainer}>
-          <Image
-            source={
-              __DEV__
-                ? require('../assets/images/robot-dev.png')
-                : require('../assets/images/robot-prod.png')
-            }
-            style={styles.welcomeImage}
-          />
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      loading: false,
+      data: [],
+      error: null,
+    };
+
+    this.arrayholder = [];
+  }
+
+
+  componentDidMount() {
+    this.makeRemoteRequest();
+  }
+
+  makeRemoteRequest = () => {
+
+    this.setState({ loading: true });
+
+    getJSON('/3.0/authenticated/all-attendees', true).then(data => {
+
+      var newData = data.data.attendees.splice(0);
+      newData.sort((a, b) => (a.last_name > b.last_name) ? 1 : (a.last_name === b.last_name) ? ((a.first_name > b.first_name) ? 1 : -1) : -1);
+
+      this.setState({
+        data: newData,
+        error: data.error || null,
+        loading: false,
+      });
+      this.arrayholder = newData;
+    });
+
+  };
+
+  renderSeparator = () => {
+    return (
+      <View
+        style={{
+          height: 1,
+          width: '86%',
+          backgroundColor: '#CED0CE',
+          marginLeft: '14%',
+        }}
+      />
+    );
+  };
+
+  searchFilterFunction = text => {
+    this.setState({
+      value: text,
+    });
+
+    const newData = this.arrayholder.filter(item => {
+      const itemData = `${item.first_name.toUpperCase()} ${item.last_name.toUpperCase()}`;
+      const textData = text.toUpperCase();
+
+      return itemData.indexOf(textData) > -1;
+    });
+    this.setState({
+      data: newData,
+    });
+  };
+
+  renderHeader = () => {
+    return (
+      <SearchBar
+        placeholder="Type Here..."
+        lightTheme
+        round
+        onChangeText={text => this.searchFilterFunction(text)}
+        autoCorrect={false}
+        value={this.state.value}
+      />
+    );
+  };
+
+  render() {
+    if (this.state.loading) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator />
         </View>
-
-        <View style={styles.getStartedContainer}>
-          <DevelopmentModeNotice />
-
-          <Text style={styles.getStartedText}>Get started by opening</Text>
-
-          <View
-            style={[styles.codeHighlightContainer, styles.homeScreenFilename]}>
-            <MonoText>screens/HomeScreen.js</MonoText>
-          </View>
-
-          <Text style={styles.getStartedText}>
-            Change this text and your app will automatically reload.
-          </Text>
-        </View>
-
-        <View style={styles.helpContainer}>
-          <TouchableOpacity onPress={handleHelpPress} style={styles.helpLink}>
-            <Text style={styles.helpLinkText}>
-              Help, it didn’t automatically reload!
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <View style={styles.tabBarInfoContainer}>
-        <Text style={styles.tabBarInfoText}>
-          This is a tab bar. You can edit it in:
-        </Text>
-
-        <View
-          style={[styles.codeHighlightContainer, styles.navigationFilename]}>
-          <MonoText style={styles.codeHighlightText}>
-            navigation/MainTabNavigator.js
-          </MonoText>
-        </View>
+      );
+    }
+    return (
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={this.state.data}
+          renderItem={({ item }) => (
+            <ListItem
+              //leftAvatar={{ source: { uri: item.picture.thumbnail } }}
+              title={`${item.first_name} ${item.last_name}`}
+              subtitle={item.email}
+            />
+          )}
+          keyExtractor={item => item.email}
+          ItemSeparatorComponent={this.renderSeparator}
+          ListHeaderComponent={this.renderHeader}
+        />
       </View>
-    </View>
-  );
-}
-
-HomeScreen.navigationOptions = {
-  header: null,
-};
-
-function DevelopmentModeNotice() {
-  if (__DEV__) {
-    const learnMoreButton = (
-      <Text onPress={handleLearnMorePress} style={styles.helpLinkText}>
-        Learn more
-      </Text>
-    );
-
-    return (
-      <Text style={styles.developmentModeText}>
-        Development mode is enabled: your app will be slower but you can use
-        useful development tools. {learnMoreButton}
-      </Text>
-    );
-  } else {
-    return (
-      <Text style={styles.developmentModeText}>
-        You are not in development mode: your app will run at full speed.
-      </Text>
     );
   }
 }
 
-function handleLearnMorePress() {
-  WebBrowser.openBrowserAsync(
-    'https://docs.expo.io/versions/latest/workflow/development-mode/'
-  );
-}
-
-function handleHelpPress() {
-  WebBrowser.openBrowserAsync(
-    'https://docs.expo.io/versions/latest/workflow/up-and-running/#cant-see-your-changes'
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  developmentModeText: {
-    marginBottom: 20,
-    color: 'rgba(0,0,0,0.4)',
-    fontSize: 14,
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-  contentContainer: {
-    paddingTop: 30,
-  },
-  welcomeContainer: {
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  welcomeImage: {
-    width: 100,
-    height: 80,
-    resizeMode: 'contain',
-    marginTop: 3,
-    marginLeft: -10,
-  },
-  getStartedContainer: {
-    alignItems: 'center',
-    marginHorizontal: 50,
-  },
-  homeScreenFilename: {
-    marginVertical: 7,
-  },
-  codeHighlightText: {
-    color: 'rgba(96,100,109, 0.8)',
-  },
-  codeHighlightContainer: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 3,
-    paddingHorizontal: 4,
-  },
-  getStartedText: {
-    fontSize: 17,
-    color: 'rgba(96,100,109, 1)',
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  tabBarInfoContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    ...Platform.select({
-      ios: {
-        shadowColor: 'black',
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 20,
-      },
-    }),
-    alignItems: 'center',
-    backgroundColor: '#fbfbfb',
-    paddingVertical: 20,
-  },
-  tabBarInfoText: {
-    fontSize: 17,
-    color: 'rgba(96,100,109, 1)',
-    textAlign: 'center',
-  },
-  navigationFilename: {
-    marginTop: 5,
-  },
-  helpContainer: {
-    marginTop: 15,
-    alignItems: 'center',
-  },
-  helpLink: {
-    paddingVertical: 15,
-  },
-  helpLinkText: {
-    fontSize: 14,
-    color: '#2e78b7',
-  },
-});
+export default HomeScreen;
