@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { View, Text, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { ListItem, SearchBar } from 'react-native-elements';
 import { postJSON, getJSON } from '../utils';
 
@@ -35,7 +35,9 @@ class HomeScreen extends Component {
         data: newData,
         error: data.error || null,
         loading: false,
+        refreshing: false,
       });
+
       this.arrayholder = newData;
     });
 
@@ -60,7 +62,7 @@ class HomeScreen extends Component {
     });
 
     const newData = this.arrayholder.filter(item => {
-      const itemData = `${item.first_name.toUpperCase()} ${item.last_name.toUpperCase()}`;
+      const itemData = `${item.first_name.toUpperCase()} ${item.last_name.toUpperCase()} ${item.email.toUpperCase()}`;
       const textData = text.toUpperCase();
 
       return itemData.indexOf(textData) > -1;
@@ -83,6 +85,12 @@ class HomeScreen extends Component {
     );
   };
 
+  _onRefresh = () => {
+    this.setState({ refreshing: true });
+    this.makeRemoteRequest();
+    this.setState({ refreshing: false });
+  }
+
   render() {
     if (this.state.loading) {
       return (
@@ -95,6 +103,12 @@ class HomeScreen extends Component {
       <View style={{ flex: 1 }}>
         <FlatList
           data={this.state.data}
+          refreshControl={
+            <RefreshControl
+              refreshing={this.state.refreshing}
+              onRefresh={this._onRefresh}
+            />
+          }
           renderItem={({ item }) => (
             <ListItem
               //leftAvatar={{ source: { uri: item.picture.thumbnail } }}
