@@ -4,7 +4,7 @@ import Constants from 'expo-constants';
 import * as Permissions from 'expo-permissions';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import {withNavigation} from 'react-navigation';
-import {postJSON} from '../utils';
+import {getJSON} from '../utils';
 
 class QRScreen extends React.Component {
 
@@ -58,7 +58,8 @@ class QRScreen extends React.Component {
 
   handleBarCodeScanned = ({ type, data }) => {
     this.setState({scanned: true});
-    postJSON(`/3.0/authenticated/attendee-info-by-qrcode/${data}`,{},true).then(res=>{
+    console.log(data);
+    getJSON(`/3.0/authenticated/attendee-info-by-qrcode/${data}`,true).then(res=>{
       if(res.success){
         console.log(res.data);
       }else{
