@@ -59,7 +59,7 @@ class QRScreen extends React.Component {
   handleBarCodeScanned = ({ type, data }) => {
     this.setState({scanned: true});
     console.log(data);
-    getJSON(`/3.0/authenticated/attendee-info-by-qrcode/${data}`,true).then(res=>{
+    getJSON(`/3.0/authenticated/attendee-info-by-qrcode/${encodeURIComponent(data)}`,true).then(res=>{
       if(res.success){
         console.log(res.data);
       }else{
