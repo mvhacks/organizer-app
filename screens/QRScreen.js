@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { Text, View, StyleSheet, Button,Alert } from 'react-native';
-import Constants from 'expo-constants';
+import { Text, View, StyleSheet,Alert } from 'react-native';
 import * as Permissions from 'expo-permissions';
 import { BarCodeScanner } from 'expo-barcode-scanner';
-import {withNavigation} from 'react-navigation';
+import {withNavigationFocus} from 'react-navigation';
 import {getJSON} from '../utils';
 
 class QRScreen extends React.Component {
@@ -12,22 +11,14 @@ class QRScreen extends React.Component {
     super(props);
     this.state = {
       hasCameraPermission: null,
-      scanned: false
+      scanned: true
     };
 
   }
 
   async componentDidMount() {
     this.getPermissionsAsync();
-    const { navigation } = this.props;
-    this.focusListener = navigation.addListener("didFocus", () => {
-      this.setState({scanned:false});
-    });
   }
-  componentWillUnmount() {
-    this.focusListener.remove();
-  }
-
 
   getPermissionsAsync = async () => {
     const { status } = await Permissions.askAsync(Permissions.CAMERA);
@@ -48,7 +39,7 @@ class QRScreen extends React.Component {
         <View
         style={styles.box1}>
           <BarCodeScanner
-            onBarCodeScanned={scanned ? undefined:this.handleBarCodeScanned}
+            onBarCodeScanned={scanned&&this.props.isFocused ? this.handleBarCodeScanned:undefined}
             style={StyleSheet.absoluteFillObject}
           />
         </View>
@@ -57,13 +48,16 @@ class QRScreen extends React.Component {
   }
 
   handleBarCodeScanned = ({ type, data }) => {
-    this.setState({scanned: true});
-    console.log(data);
+    const {navigate} = this.props.navigation;
+    this.setState({scanned: false});
+    console.log(this.props.isFocused);
+    // console.log(data);
     getJSON(`/3.0/authenticated/attendee-info-by-qrcode/${encodeURIComponent(data)}`,true).then(res=>{
       if(res.success){
-        console.log(res.data);
+        navigate('Profile',{qrcode:data});
+        this.setState({scanned:true})
       }else{
-        Alert.alert('Error',res.error,[{text: 'OK', onPress: () => this.setState({scanned:false})}]);
+        Alert.alert('Error',res.error,[{text: 'OK', onPress: () => this.setState({scanned:true})}]);
       }
     });
   };
@@ -81,4 +75,4 @@ const styles = StyleSheet.create({
 
 });
 
-export default withNavigation(QRScreen);
+export default withNavigationFocus(QRScreen);

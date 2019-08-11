@@ -26,7 +26,7 @@ export async function getJSON(url, authorized = false) {
         authorized = await AsyncStorage.getItem('mvhacks-token');
     }
 
-    if (!url.includes('http')) {
+    if (!url.includes('https')) {
         url = serverHost + url;
     }
     return fetch(url, {

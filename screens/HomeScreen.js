@@ -92,6 +92,7 @@ class HomeScreen extends Component {
   }
 
   render() {
+    const {navigate} = this.props.navigation;
     if (this.state.loading) {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -114,6 +115,7 @@ class HomeScreen extends Component {
               //leftAvatar={{ source: { uri: item.picture.thumbnail } }}
               title={`${item.first_name} ${item.last_name}`}
               subtitle={item.email}
+              onPress={() => navigate('Profile',{email: item.email})}
             />
           )}
           keyExtractor={item => item.email}
