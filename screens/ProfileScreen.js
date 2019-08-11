@@ -64,7 +64,7 @@ class ProfileScreen extends Component{
     }
     downloadPicture = async (id) =>{
         console.log("made it here");
-        let s3  =new S3({accessKeyId:"AKIA5ZSLQXH57WDBWZPO",secretAccessKey:"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"});
+        let s3  =new S3();
         let params = {
             Bucket: "mvhacks",
             Key: id
@@ -104,7 +104,7 @@ class ProfileScreen extends Component{
           }
     }
     uploadPhoto = async(uri) =>{
-        let s3  =new S3({accessKeyId:"AKIA5ZSLQXH57WDBWZPO",secretAccessKey:"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"});
+        let s3  =new S3({});
         let id = uuidv4()+".jpg";
         let response = await fetch(uri);
         let blob = await response.blob();
