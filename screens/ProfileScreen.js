@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-import { View, Text,Button,StyleSheet,Image} from 'react-native';
-import {getJSON,postJSON} from '../utils';
+import { View, Text,Button,StyleSheet,Image,Modal,TextInput,FlatList} from 'react-native';
+import {getJSON,postJSON,db} from '../utils';
 import {withNavigationFocus} from 'react-navigation';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as Permissions from 'expo-permissions';
@@ -9,10 +9,10 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import S3 from 'aws-sdk/clients/s3';
 import uuidv4 from 'uuid/v4';
+import {AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY} from 'react-native-dotenv';
 class ProfileScreen extends Component{
     constructor(props) {
         super(props);
-    
         this.state = {
             scanned:true,
             error: false,
@@ -25,7 +25,9 @@ class ProfileScreen extends Component{
             hasCameraPermission: false,
             hasPicture: false,
             userInfo: {},
-            picture:""
+            picture:"",
+            points:null,
+            modalVisible: false
         };
       }
     async componentDidMount(){
@@ -33,10 +35,16 @@ class ProfileScreen extends Component{
         const { navigation } = this.props;
         if(navigation.getParam('email')){
             await this.setState({email:navigation.getParam('email')});
-            await this.getUserInfoEmail();
+            this.getUserInfoEmail();
             this.setState({loading:false});
+
         } else if(navigation.getParam('qrcode')){
-            await this.setState({qrcode:navigation.getParam('qrcode')});
+            await this.setState({qrcode:navigation.getParam('qrcode'),hasQRCode:true});
+            db.collection("users").doc(navigation.getParam('qrcode')).onSnapshot((doc)=>{
+                this.setState({points:doc.data().points})
+            });
+            this.getUserInfoQRCode();
+            this.setState({loading:false});
         }else{
             this.setState({ error: true,errorText:"error: no param input"});
         }
@@ -45,16 +53,16 @@ class ProfileScreen extends Component{
         const { status } = await Permissions.askAsync(Permissions.CAMERA);
         this.setState({ hasCameraPermission: status === 'granted' });
     };
-    getUserInfoEmail = () =>{
-        getJSON(`/3.0/authenticated/attendee-info-by-email/${encodeURIComponent(this.state.email)}`,true).then((res)=>{
+    getUserInfoQRCode = () =>{
+        getJSON(`/3.0/authenticated/attendee-info-by-qrcode/${encodeURIComponent(this.state.qrcode)}`,true).then((res)=>{
             if(!res.success){
                 this.setState({error:true,errorText:res.error});
             }else{
-                if(res.data.attendee.qrcode_id != null){
-                    this.setState({qrcode:res.data.attendee.qrcode_id,hasQRCode:true});
+                if(res.data.email != null){
+                    this.setState({email:res.data.email});
                 }
-                if(res.data.attendee.properties.profile_pic_id!=null){
-                    this.downloadPicture(res.data.attendee.properties.profile_pic_id);
+                if(res.data.properties.profile_pic_id!=null||res.data.properties.profile_pic_id===""){
+                    this.downloadPicture(res.data.properties.profile_pic_id);
                 }
                 this.setState({userInfo:res.data});
             }
@@ -62,16 +70,41 @@ class ProfileScreen extends Component{
             console.log(err);
         });
     }
+    getUserInfoEmail = () =>{
+        getJSON(`/3.0/authenticated/attendee-info-by-email/${encodeURIComponent(this.state.email)}`,true).then((res)=>{
+            if(!res.success){
+                this.setState({error:true,errorText:res.error});
+            }else{
+                if(res.data.qrcode_id != null||res.data.qrcode_id !==""){
+                    ("i made it")
+                    this.setState({qrcode:res.data.qrcode_id,hasQRCode:true});
+                    db.collection("users").doc(res.data.qrcode_id).onSnapshot((doc)=>{
+                        this.setState({points:doc.data().points})
+                    });
+                }
+                if(res.data.properties.profile_pic_id!=null||res.data.properties.profile_pic_id!==""){
+                    this.downloadPicture(res.data.properties.profile_pic_id);
+                }
+                this.setState({userInfo:res.data});
+                
+            }
+        }).catch((err)=>{
+            console.log(err);
+        });
+    }
     downloadPicture = async (id) =>{
-        console.log("made it here");
-        let s3  =new S3();
+        let s3  =new S3({accessKeyId: AWS_ACCESS_KEY_ID,secretAccessKey: AWS_SECRET_ACCESS_KEY});
         let params = {
             Bucket: "mvhacks",
-            Key: id
+            Key: id,
+            Expires: 60 
         }
-        s3.getObject(params,(err,data)=>{
-            console.log(err);
-            console.log(data);
+        s3.getSignedUrl('getObject', params,(err,url)=>{
+            if(err){
+                console.log(err);
+            }else{
+                this.setState({picture:url,hasPicture:true})
+            }
         });
     }
     handleBarCodeScanned = ({ type, data }) => {
@@ -81,7 +114,11 @@ class ProfileScreen extends Component{
             "qrcode": data
         },true).then((res)=>{
             if(res.success){
-                this.setState({finishprofile:2,hasQRCode:true});
+                db.collection("users").doc(data).set({points:"0"});
+                db.collection("users").doc(data).onSnapshot((doc)=>{
+                    this.setState({points:doc.data().points})
+                });
+                this.setState({finishprofile:2,hasQRCode:true,qrcode:data});
             }else{
                 this.setState({error:true,errorText:res.error});
             }
@@ -104,7 +141,7 @@ class ProfileScreen extends Component{
           }
     }
     uploadPhoto = async(uri) =>{
-        let s3  =new S3({});
+        let s3  =new S3({accessKeyId: AWS_ACCESS_KEY_ID,secretAccessKey: AWS_SECRET_ACCESS_KEY});
         let id = uuidv4()+".jpg";
         let response = await fetch(uri);
         let blob = await response.blob();
@@ -120,7 +157,6 @@ class ProfileScreen extends Component{
             if(err){
                 console.log(err);
             }else{
-                console.log(data);
                 postJSON('/3.0/authenticated/set-profile-picture',{
                     "attendee_email": this.state.email,
                     "profile_pic_id": id
@@ -145,7 +181,7 @@ class ProfileScreen extends Component{
                 </Text>
                 <Button 
                     onPress={()=>this.checkQRCode()}
-                    title="Finsh Profile"
+                    title="Finish Profile"
                 />
             </View>
             );
@@ -193,6 +229,58 @@ class ProfileScreen extends Component{
             );
         }
     }
+    changeModal = () =>{
+        this.setState({modalVisible:!this.state.modalVisible});
+    }
+    changePoints = (pointsLocal) =>{
+        this.setState({points:pointsLocal})
+        db.collection("users").doc(this.state.qrcode).set({points:pointsLocal});
+    }
+    convertProperties = () =>{
+        let a = Object.entries(this.state.userInfo.properties);
+        let b = []
+        for(let i =0;i<a.length;i++){
+            let x = a[i];
+            b.push({"key":x[0],"value":x[1]});
+        }
+        console.log(b)
+        return b;
+    }
+    keyExtractor = (item,index) => item.key;
+    renderItem = ({item}) => {
+        if(item.key!=="profile_pic_id"||item.key!=="dietary_restrictions"){
+            return(<View>
+                <Text>
+                    {item.key}:{item.value}
+                </Text>
+            </View>
+            );
+        }else{
+            return;
+        }
+    }
+    miscInfo = () =>{
+        if(this.state.userInfo.properties){
+            return(
+                <View style={{flex:2}}>
+                    <FlatList
+                        keyExtractor={this.keyExtractor}
+                        data={this.convertProperties()}
+                        renderItem={this.renderItem}
+                    />
+                </View>
+            )
+        }
+        else{
+            return(
+                <View style={{flex:1}}>
+                    <Text>
+                        For some reason you have no properties
+                    </Text>
+                </View>
+            )
+        }
+    }
     render(){
         if(this.state.loading){
             return(<View><Text>Loading</Text></View>);
@@ -201,10 +289,51 @@ class ProfileScreen extends Component{
             return(<View><Text>{this.state.errorText}</Text></View>);
         }
         if(this.state.hasQRCode&&this.state.hasPicture){
-            return(<View><Image
-                style={{width: 50, height: 50}}
-                source={{ uri: this.state.picture }}
-              /></View>);
+            return(
+            <View style={{flex:1}}>
+                <Modal
+                    animationType="slide"
+                    visible={this.state.modalVisible}>
+                    <View style={{ flex: 1, justifyContent:'center'}}>
+                        <TextInput style={{flex:1}} onChangeText={text => this.changePoints(text)} value={String(this.state.points)}/>
+                        <View style={{flex:1,flexDirection: 'row'}}>
+                            <View style={{flex:1}}>
+                                <View style={{flex:1,flexDirection: 'row'}}>
+                                    <Button style={{flex:1}} onPress={()=>this.changePoints(this.state.points+1)} title="+1" />
+                                    <Button style={{flex:1}} onPress={()=>this.changePoints(this.state.points+10)} title="+10" />
+                                </View>
+                                <View style={{flex:1,flexDirection: 'row'}}>
+                                    <Button style={{flex:1}} onPress={()=>this.changePoints(this.state.points+50)} title="+50" />
+                                    <Button style={{flex:1}} onPress={()=>this.changePoints(this.state.points+100)} title="+100" />
+                                </View>
+                            </View>
+                            <View style={{flex:1}}>
+                                <View style={{flex:1,flexDirection: 'row'}}>
+                                    <Button style={{flex:1}} onPress={()=>this.changePoints(this.state.points-1)} title="-1" />
+                                    <Button style={{flex:1}} onPress={()=>this.changePoints(this.state.points-10)} title="-10" />
+                                </View>
+                                <View style={{flex:1,flexDirection: 'row'}}>
+                                    <Button style={{flex:1}} onPress={()=>this.changePoints(this.state.points-50)} title="-50" />
+                                    <Button style={{flex:1}} onPress={()=>this.changePoints(this.state.points-100)} title="-100" />
+                                </View>
+                            </View>
+                        </View>
+                        <Button style={{flex:1}} onPress={this.changeModal} title="Close" />
+                    </View>
+                </Modal>
+                <View style={{flex:1,flexDirection:'row'}}>
+                    <Image style={{flex:1}}source={{ uri: this.state.picture }}/>
+                    <View style={{flex:1}}>
+                        <Text style={{flex:1}}>Name: {this.state.userInfo.first_name} {this.state.userInfo.last_name}</Text>
+                        <Text style={{flex:1}}>Email: {this.state.userInfo.email}</Text>
+                        <View style={{flex:1}}>
+                            <Text style={{flex:1}}>Points: {this.state.points}</Text>
+                            <Button style={{flex:1}} onPress={this.changeModal} title="Change Points" />
+                        </View>
+                    </View>
+                </View>
+                {this.miscInfo()}
+            </View>);
         }else{
             return(this.FinishProfile());
         }
